@@ -1,0 +1,35 @@
+# Flutter
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+*.iml
+.idea/
+.vscode/
+*.log
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+*.jks
+
+# iOS / macOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+macos/Pods/
+macos/Flutter/ephemeral/
+
+# Node.js (бэкенд)
+sofi-server/node_modules/
+sofi-server/.env
+sofi-server/memory.json
+
+# Временные
+build_log.txt
+.DS_Store
+*.swp
