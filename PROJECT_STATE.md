@@ -212,6 +212,27 @@ sofi-server/ ← Node.js бэкенд
 | `No module named 'flask'` | Homebrew Python (PEP 668) | venv в `sofi-server/venv/` |
 | CORS preflight без POST | не хватало `Access-Control-Allow-Methods` | явный CORS + `after_request` |
 
+### 🗓️ День 4 — 2026-10-29 (вечер)
+
+**Память (этап 2) — ГОТОВО:**
+
+- [x] `memory/profileManager.js` — CRUD профиля
+- [x] `memory/extractor.js` — извлечение фактов (regex + LLM)
+- [x] `memory/profile.json` — хранилище
+- [x] Regex для имени: `extractNameByRegex` (100% надёжно)
+- [x] Фильтр мусора `isJunk` (не сохраняет «нет данных»)
+- [x] `promptRouter.js` — `formatProfileForPrompt` в промпт
+- [x] Модель: `qwen2.5:3b` (лучше следует инструкциям)
+- [x] Жёсткий `LANGUAGE_LOCK` с примерами (различает меня/тебя)
+
+**Проверено:**
+
+- Sofi помнит имя: «Тебя зовут Адам» ✅
+- Sofi помнит факты: «Ты работаешь программистом» ✅
+- Различает «меня/тебя» ✅
+
+**Следующий этап:** интернет (tool calling + web search).
+
 **Как запустить Flask (новый терминал):**
 
 ````bash
