@@ -27,6 +27,7 @@ import { updateEvolutionMap } from "./ai/evolutionMap.js";
 import { updateRelationship } from "./ai/relationshipModel.js";
 import { finalConsistency } from "./utils/finalConsistency.js";
 import { monitorDrift } from "./ai/driftMonitor.js";
+import 'dotenv/config';
 
 const activeRequests = new Set();
 
@@ -42,6 +43,53 @@ app.use(express.json());
 app.get("/health", (_, res) =>
     res.json({ ok: true, name: "sofi", v: 8 })
 );
+
+app.post("/tts", async (req, res) => {
+    const { text, reference } = req.body || {};
+
+    if (!text) {
+        return res.status(400).json({ error: "text is required" });
+    }
+
+    try {
+        const body = {
+            model: "kitten-tts-2-latest",
+            input: text,
+            response_format: "mp3", // или "wav", если предпочитаете
+        };
+
+        // Если передан файл-образец для клонирования, используем его
+        // Иначе — встроенный голос
+        if (reference) {
+            body.reference = reference;
+        } else {
+            body.voice = "martha_weathered_female_35"; // или любой другой из 47 голосов
+        }
+
+        const response = await fetch("https://api.kittenml.com/v1/audio/speech", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${process.env.KITTENML_API_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error("KittenML error:", response.status, errText);
+            return res.status(response.status).json({ error: "TTS failed" });
+        }
+
+        // Получаем аудио как бинарный поток и отправляем клиенту
+        const audioBuffer = await response.arrayBuffer();
+        res.set("Content-Type", "audio/mpeg"); // для mp3
+        res.send(Buffer.from(audioBuffer));
+    } catch (e) {
+        console.error("TTS error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
 
 /* ─────────────────────────────
    USER INIT

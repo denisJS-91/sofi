@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/ai_service.dart';
 import '../services/firestore_memory.dart';
+import '../services/voice_service.dart';
 import '../models/chat_message.dart';
+import '../widgets/message_bubble.dart';
+import '../widgets/chat_input.dart';
+import '../theme/app_theme.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -16,6 +20,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
   bool _isHistoryLoading = true;
+  bool _isListening = false;
+  bool _autoSpeak = false;
 
   @override
   void initState() {
@@ -36,7 +42,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.clear();
         if (history.isEmpty) {
           _messages.add(ChatMessage(
-            text: "Привет 👋 Я Sofi. Я рядом, если тебе нужна помощь.",
+            text: "Привет! Я Sofi. Я рядом, если тебе нужна помощь.",
             isUser: false,
             time: DateTime.now(),
           ));
@@ -65,10 +71,39 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  Future<void> _toggleListening() async {
+    if (_isListening) {
+      await VoiceService.stopListening();
+      setState(() => _isListening = false);
+      return;
+    }
+    setState(() {
+      _isListening = true;
+      _controller.clear();
+    });
+    await VoiceService.startListening(
+      onResult: (text) {
+        if (!mounted) return;
+        _controller.text = text;
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: text.length),
+        );
+        setState(() {});
+      },
+      onDone: () {
+        if (mounted) setState(() => _isListening = false);
+      },
+    );
+  }
+
   Future<void> sendMessage() async {
     if (_isLoading) return;
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    if (_isListening) {
+      await VoiceService.stopListening();
+      setState(() => _isListening = false);
+    }
 
     setState(() {
       _messages
@@ -92,14 +127,22 @@ class _ChatScreenState extends State<ChatScreen> {
       _isLoading = false;
     });
     _scrollToBottom();
+
+    if (_autoSpeak && !reply.contains("Ошибка")) {
+      VoiceService.speak(reply);
+    }
   }
 
   Future<void> _logout() async {
+    await VoiceService.stopSpeaking();
+    await VoiceService.stopListening();
     await FirebaseAuth.instance.signOut();
   }
 
   @override
   void dispose() {
+    VoiceService.stopListening();
+    VoiceService.stopSpeaking();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -109,9 +152,40 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Sofi"),
-        backgroundColor: Colors.black,
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [AppColors.primary, Color(0xFF8B5CF6)],
+                ),
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                "S",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text("Sofi"),
+          ],
+        ),
         actions: [
+          IconButton(
+            icon: Icon(
+              _autoSpeak ? Icons.volume_up : Icons.volume_off,
+              color: _autoSpeak ? AppColors.primary : AppColors.textSecondary,
+            ),
+            tooltip: _autoSpeak ? "Автоозвучка вкл" : "Автоозвучка выкл",
+            onPressed: () => setState(() => _autoSpeak = !_autoSpeak),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: "Выйти",
@@ -124,68 +198,43 @@ class _ChatScreenState extends State<ChatScreen> {
           : Column(
               children: [
                 Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, index) {
-                      final msg = _messages[index];
-                      return Align(
-                        alignment: msg.isUser
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: msg.isUser
-                                ? Colors.blueAccent
-                                : const Color(0xFF1E293B),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                  child: _messages.isEmpty
+                      ? const Center(
                           child: Text(
-                            msg.text,
-                            style: const TextStyle(color: Colors.white),
+                            "Начни диалог с Sofi 👋",
+                            style: TextStyle(color: AppColors.textSecondary),
                           ),
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          itemCount: _messages.length,
+                          itemBuilder: (context, index) {
+                            final msg = _messages[index];
+                            return MessageBubble(
+                              message: msg,
+                              onSpeak: msg.isUser
+                                  ? null
+                                  : () => VoiceService.speak(msg.text),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ),
                 if (_isLoading)
                   const Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: CircularProgressIndicator(),
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          style: const TextStyle(color: Colors.white),
-                          cursorColor: Colors.white,
-                          onSubmitted: (_) => sendMessage(),
-                          decoration: InputDecoration(
-                            hintText: "Напиши сообщение...",
-                            hintStyle: const TextStyle(color: Colors.white54),
-                            filled: true,
-                            fillColor: const Color(0xFF1E293B),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: _isLoading ? null : sendMessage,
-                        icon: const Icon(Icons.send),
-                        color: Colors.blueAccent,
-                      ),
-                    ],
-                  ),
+                ChatInput(
+                  controller: _controller,
+                  isLoading: _isLoading,
+                  isListening: _isListening,
+                  onSend: sendMessage,
+                  onToggleMic: _toggleListening,
                 ),
               ],
             ),

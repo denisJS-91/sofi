@@ -1,66 +1,151 @@
-# SOFI — Project State (снимок на 2026-10-26)
+# 🐱 SOFI — Project State
 
+> **AI-компаньон с характером**: личностью, эмоциями, памятью и голосом.
 > Этот файл — «память» проекта. При возобновлении работы скинь его AI-ассистенту,
-> чтобы он понял, где мы остановились.
+> чтобы он понял контекст и продолжил без лишних вопросов.
 
-## 🎯 Что за проект
+**Последнее обновление:** 2026-10-27 (день 2)
 
-**Sofi** — AI-ассистент с характером (личностью, эмоциями, памятью).
-«AI-компаньон с долговременной памятью».
+---
 
-## 🏗️ Архитектура (3 слоя)
+## 📖 Оглавление
 
-Flutter App (sofi/) ──► Node.js Backend (sofi-server/) ──► Ollama (llama3.2:3b)
-│ │
-├─► Firebase Auth ├─► SOFI_CORE (личность, эмоции, состояние)
-├─► Firestore messages └─► memory.json (персистентная память)
-└─► Firestore profile
+1. [О проекте](#-о-проекте)
+2. [Архитектура](#-архитектура)
+3. [Технологии](#-технологии)
+4. [Что работает](#-что-работает)
+5. [Известные проблемы](#-известные-проблемы)
+6. [Структура проекта](#-структура-проекта)
+7. [Как запустить](#-как-запустить)
+8. [Ключевые настройки](#-ключевые-настройки)
+9. [История разработки](#-история-разработки)
+10. [Что осталось](#-что-осталось-roadmap)
+11. [Как проверить](#-как-проверить-что-всё-работает)
+12. [Чек-лист перед сессией](#-чек-лист-перед-сессией)
 
+---
+
+## 🎯 О проекте
+
+**Sofi** — не «обёртка над ChatGPT», а попытка создать **AI-компаньона**, у которого есть:
+
+| Способность     | Что это значит                                                 |
+| --------------- | -------------------------------------------------------------- |
+| 🧠 **Память**   | Помнит прошлые разговоры (Firestore + `memory.json`)           |
+| 💭 **Эмоции**   | Реагирует на тон и контекст диалога                            |
+| 🎭 **Личность** | Стабильный характер, не «съезжает» от сообщения к сообщению    |
+| 🗣️ **Голос**    | Распознавание речи (STT) + озвучка (TTS) + клонирование голоса |
+
+**Формат:** учебный/курсовой проект. Цель — показать архитектуру AI-компаньона.
+
+---
+
+## 🏗️ Архитектура
+
+Три слоя, каждый со своей зоной ответственности:
+┌─────────────────────────────────────────────────────────────┐
+│ Flutter App (sofi/) │
+│ ├── Firebase Auth — вход/регистрация │
+│ ├── Firestore messages — история чата │
+│ ├── Firestore profile — факты о пользователе │
+│ ├── STT (speech_to_text) — голосовой ввод │
+│ └── TTS (just_audio) — воспроизведение озвучки │
+└────────────────────────────┬────────────────────────────────┘
+│ HTTP
+▼
+┌─────────────────────────────────────────────────────────────┐
+│ Node.js Backend (sofi-server/) │
+│ ├── /chat — основной эндпоинт диалога │
+│ ├── /tts — прокси к KittenML TTS API │
+│ ├── /health — healthcheck │
+│ └── 25 модулей личности: │
+│ intent → emotion → state → personality → prompt │
+│ → identity lock → AI → drift monitor → memory │
+└────────────────────────────┬────────────────────────────────┘
+│
+┌────────────┴────────────┐
+▼ ▼
+┌───────────────────────┐ ┌──────────────────────────┐
+│ Ollama (локально) │ │ KittenML API (облако) │
+│ llama3.2:3b │ │ TTS + клонирование │
+│ 127.0.0.1:11434 │ │ api.kittenml.com │
+└───────────────────────┘ └──────────────────────────┘
+
+---
 
 ## 🧰 Технологии
 
-**Flutter:**
-- Firebase (Auth, Firestore)
-- http, provider, google_fonts, flutter_animate
-- speech_to_text, flutter_tts (подключены, но НЕ используются)
-- record, just_audio (подключены, не используются)
+### Flutter (клиент)
 
-**Backend (Node.js / Express):**
-- Ollama локально (модель `llama3.2:3b` на `127.0.0.1:11434`)
-- ~25 модулей личности (intent, emotion, state, personality, memory, identity)
-- memory.json — персистентное состояние
+| Пакет                                               | Для чего                                                  |
+| --------------------------------------------------- | --------------------------------------------------------- |
+| `firebase_core`, `firebase_auth`, `cloud_firestore` | Auth + БД                                                 |
+| `http`                                              | HTTP-запросы к бэкенду                                    |
+| `provider`                                          | Управление состоянием _(подключён, пока не используется)_ |
+| `google_fonts`                                      | Шрифт Inter                                               |
+| `flutter_animate`                                   | Анимации пузырей                                          |
+| `speech_to_text`                                    | STT (микрофон)                                            |
+| `just_audio`                                        | Воспроизведение MP3 от KittenML                           |
+| `flutter_tts`                                       | _(подключён, не используется — заменён на KittenML)_      |
 
-## ✅ ЧТО РАБОТАЕТ (проверено)
+### Node.js (бэкенд)
 
-| Фича | Статус |
-|---|---|
-| Firebase Auth (email/password) | ✅ |
-| Роутинг login ↔ chat | ✅ |
-| Чат с бэкендом | ✅ (curl 5.68 сек) |
-| Firestore: запись сообщений | ✅ (`users/{uid}/messages/`) |
-| Firestore: чтение истории | ✅ |
-| Firestore Rules | ✅ настроены (`request.auth.uid == userId`) |
-| CORS | ✅ работает |
-| Ошибки в SnackBar | ✅ |
-| Platform-aware `baseUrl` (web/macOS/Android) | ✅ |
-| Таймаут на Flutter (40 сек) | ✅ |
-| Таймаут на бэкенде (50 сек, `Promise.race`) | ✅ |
-| Warmup модели при старте | ✅ |
-| `languageLock` в промпте (только русский) | ✅ |
-| Блокировка `sendMessage` при `isLoading` | ✅ |
-| Автоскролл вниз | ✅ |
-| Logout в AppBar | ✅ |
-| Модель `ChatMessage` с `Timestamp` | ✅ |
+- **Express** — HTTP-сервер
+- **Ollama** локально — модель `llama3.2:3b` на `127.0.0.1:11434`
+- **KittenML API** — облачный TTS с клонированием голоса
+- **~25 модулей личности** — intent, emotion, state, personality, memory, identity
+- **`memory.json`** — персистентное состояние пользователей
 
-## 🟡 ИЗВЕСТНЫЕ ПРОБЛЕМЫ (не критичные)
+---
 
-| Проблема | Причина | Решение |
-|---|---|---|
-| Sofi не называет себя на «Как звать?» | llama3.2:3b слабо держит роль | усилить промпт ИЛИ сменить модель на `qwen2.5:3b` |
-| Плохо понимает опечатки («как твоию») | маленькая модель | то же |
-| Не хватает эмодзи на web | Noto fonts | убрать 👋 из приветствия (проще) |
-| Xcode не установлен | — | не нужно, для Android/Web достаточно |
-| Android эмулятор `offline` | не догрузился | Cold Boot / Wipe Data / новый AVD |
+## ✅ Что работает
+
+### Клиент (Flutter)
+
+| Фича                                          | Статус            |
+| --------------------------------------------- | ----------------- |
+| Регистрация/вход (email/password)             | ✅                |
+| Роутинг login ↔ chat по `authStateChanges`    | ✅                |
+| Чат с бэкендом (HTTP)                         | ✅ ~5 сек ответ   |
+| История в Firestore (`users/{uid}/messages/`) | ✅ пишет + читает |
+| Firestore Rules (только свой uid)             | ✅                |
+| Platform-aware `baseUrl` (web/Android/iOS)    | ✅                |
+| Автоскролл вниз                               | ✅                |
+| Блокировка send при `isLoading`               | ✅                |
+| Logout в AppBar                               | ✅                |
+| Тёмная тема + шрифт Inter                     | ✅                |
+| Анимированные пузыри (Telegram-style)         | ✅                |
+| STT — микрофон 🎤                             | ✅                |
+| TTS — озвучка 🔊                              | ✅                |
+| Автоозвучка ответов (🔊 в AppBar)             | ✅                |
+
+### Бэкенд (Node.js)
+
+| Фича                                       | Статус                 |
+| ------------------------------------------ | ---------------------- |
+| `/health`                                  | ✅                     |
+| `/chat` с 25 модулями личности             | ✅                     |
+| `/tts` (прокси к KittenML)                 | ✅                     |
+| Таймаут 50 сек на `/chat` (`Promise.race`) | ✅                     |
+| Warmup модели при старте                   | ✅                     |
+| `languageLock` — только русский, роль Sofi | ✅                     |
+| CORS                                       | ✅                     |
+| Модель `llama3.2:3b` (вместо mistral:7b)   | ✅                     |
+| Клонирование голоса через KittenML         | ✅ технически работает |
+
+---
+
+## 🟡 Известные проблемы
+
+| Проблема                             | Причина                           | Решение                                      |
+| ------------------------------------ | --------------------------------- | -------------------------------------------- |
+| Клонированный голос «ломает» русский | KittenML — англоцентричная модель | Перезаписать образец / Fish Audio / оставить |
+| TTS «ломается» на длинных фразах     | Маленькая модель                  | Обрезать текст до ~200 символов              |
+| Эмодзи не работают на web            | Noto fonts не подключён           | Убрали 👋 из приветствия                     |
+| Xcode не установлен                  | —                                 | Для web/Android не нужен                     |
+| Android-эмулятор `offline`           | Cold Boot / Wipe Data             | Пересоздать AVD с API 34                     |
+
+---
 
 ## 📁 Структура проекта
 
@@ -72,13 +157,17 @@ sofi/ ← Flutter-приложение
 │ │ └── chat_message.dart ← модель с Timestamp
 │ ├── screens/
 │ │ ├── login_screen.dart ← email/password
-│ │ └── chat_screen.dart ← чат с историей, автоскроллом, logout
+│ │ └── chat_screen.dart ← чат + автоскролл + logout
 │ ├── services/
-│ │ ├── ai_service.dart ← HTTP + Firestore + platform URL
-│ │ ├── firestore_memory.dart ← messages save/load
-│ │ └── memory_service.dart ← profile (пока не используется)
-│ ├── theme/ ← ПУСТО (на будущее)
-│ └── widgets/ ← ПУСТО (на будущее)
+│ │ ├── ai_service.dart ← HTTP к бэкенду + Firestore
+│ │ ├── firestore_memory.dart ← save/load сообщений
+│ │ ├── memory_service.dart ← profile (не используется)
+│ │ └── voice_service.dart ← STT + TTS + клонирование
+│ ├── theme/
+│ │ └── app_theme.dart ← тёмная тема + Inter
+│ └── widgets/
+│ ├── message_bubble.dart ← пузырь с анимацией
+│ └── chat_input.dart ← поле ввода + 🎤
 ├── assets/
 │ ├── images/
 │ └── icons/
@@ -86,7 +175,7 @@ sofi/ ← Flutter-приложение
 └── PROJECT_STATE.md ← этот файл
 
 sofi-server/ ← Node.js бэкенд
-├── index.js ← /health + /chat
+├── index.js ← /health + /chat + /tts
 ├── ai.js ← Ollama + languageLock + warmup
 ├── ai/ ← 10 модулей личности
 ├── core/sofiCore.js
@@ -95,11 +184,45 @@ sofi-server/ ← Node.js бэкенд
 ├── memory/
 ├── prompt/
 ├── utils/
-├── memory.json ← состояние
+├── memory.json ← состояние (НЕ коммитить!)
+├── .env ← KITTENML_API_KEY (НЕ коммитить!)
 └── package.json
 
+---
 
-## 🚀 КАК ЗАПУСТИТЬ (три терминала)
+### 🗓️ День 3 — 2026-10-29
+
+**TTS без акцента (этап 1):**
+
+- [x] Отказались от KittenML для повседневного голоса (акцент)
+- [x] Переключили `voice_service.dart` на Edge TTS (`localhost:5001`)
+- [x] Голос: `ru-RU-SvetlanaNeural` (pitch=+35Hz, rate=+15%)
+- [x] Flask-сервер `tts_server.py` в venv (`sofi-server/venv/`)
+- [x] CORS-фикс: явные заголовки + `@app.after_request` + обработка OPTIONS
+- [x] Зависимости: `pip install flask flask-cors edge-tts` (в venv)
+
+**KittenML (клонирование) — отложено:**
+
+- [x] Технически работало, но русский с акцентом — модель англоцентрична
+- [x] Оставлено «на будущее» в бэкенде (`/tts` на порту 3000)
+
+**Известные проблемы:**
+| Проблема | Причина | Решение |
+|---|---|---|
+| `No module named 'flask'` | Homebrew Python (PEP 668) | venv в `sofi-server/venv/` |
+| CORS preflight без POST | не хватало `Access-Control-Allow-Methods` | явный CORS + `after_request` |
+
+**Как запустить Flask (новый терминал):**
+
+````bash
+cd ~/Desktop/sofi/sofi-server
+source venv/bin/activate
+python tts_server.py
+# → 🔊 Edge TTS on http://localhost:5001
+
+## 🚀 Как запустить
+
+Нужны **три терминала** (Ollama может работать в фоне).
 
 ### Терминал 1 — Ollama
 
@@ -109,40 +232,23 @@ ollama serve
 
 Терминал 2 — бэкенд
 
-cd ~/путь/до/sofi-server
+cd ~/Desktop/sofi/sofi-server
 node index.js
-# Ожидаемо:
-# 🧠 Sofi V8 running on http://localhost:3000
-# 🔥 Warming up model...
-# ✅ Model ready in 7.5s
+
+Ожидаемый вывод:
+
+🧠 Sofi V8 running on http://localhost:3000
+🔥 Warming up model...
+✅ Model ready in 7.5s
 
 Терминал 3 — Flutter
 
-cd ~/путь/до/sofi
+cd ~/Desktop/sofi
 flutter run -d chrome          # для web
 flutter run -d emulator-5554   # для Android-эмулятора
-flutter run -d <device-id>     # для телефона
+flutter run -d <device-id>     # для физического телефона
 
-🔧 Ключевые URL / настройки
-Ollama: http://127.0.0.1:11434/api/generate
-
-Модель: llama3.2:3b (в ai.js)
-
-Бэкенд: http://localhost:3000
-
-Healthcheck: http://localhost:3000/health
-
-Firebase проект: sofi-ce584
-
-baseUrl в ai_service.dart:
-
-Web: http://localhost:3000
-
-Android эмулятор: http://10.0.2.2:3000
-
-Физический телефон: http://<IP-Mac>:3000
-
-📋 Firestore Rules (действующие)
+Firestore Rules (действующие)
 
 rules_version = '2';
 service cloud.firestore {
@@ -153,58 +259,4 @@ service cloud.firestore {
   }
 }
 
-🎯 ЧТО ОСТАЛОСЬ (roadmap)
-
-Этап A — Качество ответов (15 мин) 🔥
-□ Усилить промпт в prompt/promptRouter.js или prompt/sofiLock.js
-«Тебя зовут Sofi. Если спрашивают имя — отвечай Sofi»
-
-«Помни контекст диалога»
-
-«Отвечай кратко (1-3 предложения)»
-
-□ ИЛИ сменить модель: ollama pull qwen2.5:3b, MODEL = "qwen2.5:3b" в ai.js
-
-Этап B — Голос (1–2 часа) 🔥
-□ STT: кнопка микрофона → speech_to_text → текст в поле ввода
-□ TTS: кнопка «озвучить» на сообщении Sofi → flutter_tts
-□ Разрешения: microphone в Info.plist (iOS), RECORD_AUDIO (Android)
-
-Этап C — UI-полировка (1–2 часа)
-□ google_fonts — подключить кастомный шрифт
-□ flutter_animate — анимация появления пузырей
-□ flutter_svg — иконки
-□ Вынести цвета/тему в theme/
-□ Разбить ChatScreen на widgets/MessageBubble, ChatInput
-□ Убрать 👋 из приветствия (если эмодзи не работают)
-
-Этап D — Документация к защите (1–2 часа) 🔥
-□ README.md — описание, архитектура, скриншоты
-□ Диаграмма архитектуры (draw.io / Mermaid)
-□ Презентация (10–15 слайдов)
-□ Описание модулей личности бэкенда
-□ Список литературы / источников
-
-Этап E — Provider (опционально)
-□ Вынести List<ChatMessage> + isLoading в ChatProvider
-□ Заменить setState на notifyListeners()
-
-🧪 Как проверить, что всё работает
-
-# 1. Бэкенд
-curl http://localhost:3000/health
-# {"ok":true,"name":"sofi","v":8}
-
-# 2. Чат
-curl -X POST http://localhost:3000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message":"привет","userId":"test123"}'
-# {"reply":"..."} за 1-5 сек
-
-# 3. В Chrome — отправить «привет», смотреть в терминал flutter:
-# ▶️ sendMessage
-# ✅ User message saved
-# 🌐 POST ...
-# 📡 status: 200
-# 📡 body: {"reply":"..."}
-# ✅ AI reply saved
+````
