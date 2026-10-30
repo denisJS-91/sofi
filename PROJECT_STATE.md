@@ -1,283 +1,423 @@
 # 🐱 SOFI — Project State
 
-> **AI-компаньон с характером**: личностью, эмоциями, памятью и голосом.
-> Этот файл — «память» проекта. При возобновлении работы скинь его AI-ассистенту,
-> чтобы он понял контекст и продолжил без лишних вопросов.
+> AI-компаньон с характером: личностью, эмоциями, памятью и голосом.
+> Скинь этот файл AI-ассистенту — и он продолжит без лишних вопросов.
 
-**Последнее обновление:** 2026-10-27 (день 2)
-
----
-
-## 📖 Оглавление
-
-1. [О проекте](#-о-проекте)
-2. [Архитектура](#-архитектура)
-3. [Технологии](#-технологии)
-4. [Что работает](#-что-работает)
-5. [Известные проблемы](#-известные-проблемы)
-6. [Структура проекта](#-структура-проекта)
-7. [Как запустить](#-как-запустить)
-8. [Ключевые настройки](#-ключевые-настройки)
-9. [История разработки](#-история-разработки)
-10. [Что осталось](#-что-осталось-roadmap)
-11. [Как проверить](#-как-проверить-что-всё-работает)
-12. [Чек-лист перед сессией](#-чек-лист-перед-сессией)
+**Обновлено:** 2026-10-30 (день 5 — OpenRouter + Dots3)
 
 ---
+
+## ⚡ Быстрый старт
+
+1. Скинь этот файл AI-ассистенту.
+2. Скажи: «продолжаем Sofi, день 6 — [что делаем]».
+3. Запусти 3 терминала:
+
+Терминал 1 — Бэкенд:
+cd ~/Desktop/sofi/sofi-server && node index.js
+→ 🧠 Sofi V8 running + ✅ AI клиент настроен
+
+Терминал 2 — Edge TTS:
+cd ~/Desktop/sofi/sofi-server
+source ~/Desktop/sofi/.venv/bin/activate
+python tts_server.py
+→ 🔊 Edge TTS on http://localhost:5001
+
+Терминал 3 — Flutter:
+cd ~/Desktop/sofi && flutter run -d chrome
 
 ## 🎯 О проекте
 
-**Sofi** — не «обёртка над ChatGPT», а попытка создать **AI-компаньона**, у которого есть:
+**Sofi** — AI-компаньон с памятью, эмоциями, личностью и голосом. Учебный проект.
 
-| Способность     | Что это значит                                                 |
-| --------------- | -------------------------------------------------------------- |
-| 🧠 **Память**   | Помнит прошлые разговоры (Firestore + `memory.json`)           |
-| 💭 **Эмоции**   | Реагирует на тон и контекст диалога                            |
-| 🎭 **Личность** | Стабильный характер, не «съезжает» от сообщения к сообщению    |
-| 🗣️ **Голос**    | Распознавание речи (STT) + озвучка (TTS) + клонирование голоса |
-
-**Формат:** учебный/курсовой проект. Цель — показать архитектуру AI-компаньона.
+| Способность | Что значит                                     |
+| ----------- | ---------------------------------------------- |
+| 🧠 Память   | Имя, факты, история (Firestore + profile.json) |
+| 💭 Эмоции   | Реакция на тон (emotionEngine)                 |
+| 🎭 Личность | 25 модулей на бэкенде                          |
+| 🗣️ Голос    | STT (микрофон) + TTS (Edge TTS)                |
+| 🌐 Интернет | Web search (погода, новости)                   |
 
 ---
 
 ## 🏗️ Архитектура
 
-Три слоя, каждый со своей зоной ответственности:
-┌─────────────────────────────────────────────────────────────┐
-│ Flutter App (sofi/) │
-│ ├── Firebase Auth — вход/регистрация │
-│ ├── Firestore messages — история чата │
-│ ├── Firestore profile — факты о пользователе │
-│ ├── STT (speech_to_text) — голосовой ввод │
-│ └── TTS (just_audio) — воспроизведение озвучки │
-└────────────────────────────┬────────────────────────────────┘
+Flutter App (sofi/)
+├── Firebase Auth + Firestore (история)
+├── STT (speech_to_text)
+└── TTS (just_audio)
 │ HTTP
 ▼
-┌─────────────────────────────────────────────────────────────┐
-│ Node.js Backend (sofi-server/) │
-│ ├── /chat — основной эндпоинт диалога │
-│ ├── /tts — прокси к KittenML TTS API │
-│ ├── /health — healthcheck │
-│ └── 25 модулей личности: │
-│ intent → emotion → state → personality → prompt │
-│ → identity lock → AI → drift monitor → memory │
-└────────────────────────────┬────────────────────────────────┘
+Node.js Backend (sofi-server/)
+├── /chat (25 модулей личности)
+├── /tts (KittenML — отложено)
+├── /health
+└── tools/webSearch
 │
-┌────────────┴────────────┐
+┌────┴────┐
 ▼ ▼
-┌───────────────────────┐ ┌──────────────────────────┐
-│ Ollama (локально) │ │ KittenML API (облако) │
-│ llama3.2:3b │ │ TTS + клонирование │
-│ 127.0.0.1:11434 │ │ api.kittenml.com │
-└───────────────────────┘ └──────────────────────────┘
+OpenRouter Edge TTS (Flask, 5001)
+Dots3 280B ru-RU-Svetlana
+
+**Ollama больше не используется** (8 ГБ RAM не тянет локальную LLM).
 
 ---
 
 ## 🧰 Технологии
 
-### Flutter (клиент)
+**Flutter:** firebase (auth, firestore), http, google_fonts (Inter), flutter_animate, speech_to_text, just_audio.
 
-| Пакет                                               | Для чего                                                  |
-| --------------------------------------------------- | --------------------------------------------------------- |
-| `firebase_core`, `firebase_auth`, `cloud_firestore` | Auth + БД                                                 |
-| `http`                                              | HTTP-запросы к бэкенду                                    |
-| `provider`                                          | Управление состоянием _(подключён, пока не используется)_ |
-| `google_fonts`                                      | Шрифт Inter                                               |
-| `flutter_animate`                                   | Анимации пузырей                                          |
-| `speech_to_text`                                    | STT (микрофон)                                            |
-| `just_audio`                                        | Воспроизведение MP3 от KittenML                           |
-| `flutter_tts`                                       | _(подключён, не используется — заменён на KittenML)_      |
+**Node.js:** Express, CORS, OpenRouter API, Edge TTS (Flask), @agent-sh/harness-websearch, 25 модулей личности.
 
-### Node.js (бэкенд)
-
-- **Express** — HTTP-сервер
-- **Ollama** локально — модель `llama3.2:3b` на `127.0.0.1:11434`
-- **KittenML API** — облачный TTS с клонированием голоса
-- **~25 модулей личности** — intent, emotion, state, personality, memory, identity
-- **`memory.json`** — персистентное состояние пользователей
+**LLM:** `dots-studio/dots-3-note-preview:free` (OpenRouter, 280B MoE, отличный русский). Лимит free: 50/день.
 
 ---
 
 ## ✅ Что работает
 
-### Клиент (Flutter)
+| Фича                       | Статус                          |
+| -------------------------- | ------------------------------- |
+| Авторизация email/password | ✅                              |
+| Чат + история в Firestore  | ✅                              |
+| Память: имя, факты         | ✅ «Тебя зовут Денис»           |
+| Контекст (10 сообщений)    | ✅                              |
+| Web search                 | ✅ «+10°, 88%, 749 мм»          |
+| STT (микрофон)             | ✅ (проверен ранее)             |
+| TTS (Edge TTS)             | ⏳ не проверено после смены LLM |
+| Тёмная тема, анимации      | ✅                              |
+| Пост-фильтры ответа        | ✅                              |
+| Скорость                   | ✅ 3–5 сек                      |
 
-| Фича                                          | Статус            |
-| --------------------------------------------- | ----------------- |
-| Регистрация/вход (email/password)             | ✅                |
-| Роутинг login ↔ chat по `authStateChanges`    | ✅                |
-| Чат с бэкендом (HTTP)                         | ✅ ~5 сек ответ   |
-| История в Firestore (`users/{uid}/messages/`) | ✅ пишет + читает |
-| Firestore Rules (только свой uid)             | ✅                |
-| Platform-aware `baseUrl` (web/Android/iOS)    | ✅                |
-| Автоскролл вниз                               | ✅                |
-| Блокировка send при `isLoading`               | ✅                |
-| Logout в AppBar                               | ✅                |
-| Тёмная тема + шрифт Inter                     | ✅                |
-| Анимированные пузыри (Telegram-style)         | ✅                |
-| STT — микрофон 🎤                             | ✅                |
-| TTS — озвучка 🔊                              | ✅                |
-| Автоозвучка ответов (🔊 в AppBar)             | ✅                |
-
-### Бэкенд (Node.js)
-
-| Фича                                       | Статус                 |
-| ------------------------------------------ | ---------------------- |
-| `/health`                                  | ✅                     |
-| `/chat` с 25 модулями личности             | ✅                     |
-| `/tts` (прокси к KittenML)                 | ✅                     |
-| Таймаут 50 сек на `/chat` (`Promise.race`) | ✅                     |
-| Warmup модели при старте                   | ✅                     |
-| `languageLock` — только русский, роль Sofi | ✅                     |
-| CORS                                       | ✅                     |
-| Модель `llama3.2:3b` (вместо mistral:7b)   | ✅                     |
-| Клонирование голоса через KittenML         | ✅ технически работает |
+**5/5 тестов прошли:** привет / имя / спасибо / погода / контекст.
 
 ---
 
-## 🟡 Известные проблемы
+## 🟡 Проблемы
 
-| Проблема                             | Причина                           | Решение                                      |
-| ------------------------------------ | --------------------------------- | -------------------------------------------- |
-| Клонированный голос «ломает» русский | KittenML — англоцентричная модель | Перезаписать образец / Fish Audio / оставить |
-| TTS «ломается» на длинных фразах     | Маленькая модель                  | Обрезать текст до ~200 символов              |
-| Эмодзи не работают на web            | Noto fonts не подключён           | Убрали 👋 из приветствия                     |
-| Xcode не установлен                  | —                                 | Для web/Android не нужен                     |
-| Android-эмулятор `offline`           | Cold Boot / Wipe Data             | Пересоздать AVD с API 34                     |
+| Проблема                       | Решение                                   |
+| ------------------------------ | ----------------------------------------- |
+| Иногда «Я рядом.» (~10%)       | Retry 2× включён; альтернатива — Cerebras |
+| Лимит 50/день OpenRouter       | Хватит на демо; ждать сутки               |
+| Dots3 рвёт кириллицу           | Редко; пост-фильтры ловят                 |
+| Клонирование голоса с акцентом | Отложено (KittenML)                       |
+| Эмодзи на web                  | Убрали 👋 из приветствия                  |
 
 ---
 
-## 📁 Структура проекта
+## 📁 Структура
 
-sofi/ ← Flutter-приложение
+sofi/
 ├── lib/
-│ ├── main.dart ← auth-роутинг
-│ ├── firebase_options.dart ← сгенерирован flutterfire
-│ ├── models/
-│ │ └── chat_message.dart ← модель с Timestamp
-│ ├── screens/
-│ │ ├── login_screen.dart ← email/password
-│ │ └── chat_screen.dart ← чат + автоскролл + logout
-│ ├── services/
-│ │ ├── ai_service.dart ← HTTP к бэкенду + Firestore
-│ │ ├── firestore_memory.dart ← save/load сообщений
-│ │ ├── memory_service.dart ← profile (не используется)
-│ │ └── voice_service.dart ← STT + TTS + клонирование
-│ ├── theme/
-│ │ └── app_theme.dart ← тёмная тема + Inter
-│ └── widgets/
-│ ├── message_bubble.dart ← пузырь с анимацией
-│ └── chat_input.dart ← поле ввода + 🎤
-├── assets/
-│ ├── images/
-│ └── icons/
-├── pubspec.yaml
-└── PROJECT_STATE.md ← этот файл
+│ ├── main.dart
+│ ├── models/chat_message.dart
+│ ├── screens/{login,chat}\_screen.dart
+│ ├── services/{ai_service,firestore_memory,voice_service,search_detector}.dart
+│ ├── theme/app_theme.dart
+│ └── widgets/{message_bubble,chat_input}.dart
+└── pubspec.yaml
 
-sofi-server/ ← Node.js бэкенд
-├── index.js ← /health + /chat + /tts
-├── ai.js ← Ollama + languageLock + warmup
-├── ai/ ← 10 модулей личности
-├── core/sofiCore.js
-├── emotion/
-├── intent/
-├── memory/
-├── prompt/
-├── utils/
-├── memory.json ← состояние (НЕ коммитить!)
-├── .env ← KITTENML_API_KEY (НЕ коммитить!)
+sofi-server/
+├── index.js # /chat, /tts, /health + пост-фильтры
+├── ai.js # OpenRouter + Dots3 + retry
+├── tts_server.py # Edge TTS (Flask, 5001)
+├── ai/ # 10 модулей личности
+├── memory/ # profileManager, extractor, profile.json
+├── tools/ # webSearch, shouldSearch
+├── prompt/promptRouter.js
+├── utils/finalConsistency.js
+├── .env # НЕ коммитить!
 └── package.json
 
 ---
 
-### 🗓️ День 3 — 2026-10-29
+## 🔑 Ключевые настройки
 
-**TTS без акцента (этап 1):**
+**`.env` в sofi-server/** (НЕ коммитить):
+OPENROUTER_API_KEY=sk-or-v1-...
+KITTENML_API_KEY=...
 
-- [x] Отказались от KittenML для повседневного голоса (акцент)
-- [x] Переключили `voice_service.dart` на Edge TTS (`localhost:5001`)
-- [x] Голос: `ru-RU-SvetlanaNeural` (pitch=+35Hz, rate=+15%)
-- [x] Flask-сервер `tts_server.py` в venv (`sofi-server/venv/`)
-- [x] CORS-фикс: явные заголовки + `@app.after_request` + обработка OPTIONS
-- [x] Зависимости: `pip install flask flask-cors edge-tts` (в venv)
+**ai.js:**
 
-**KittenML (клонирование) — отложено:**
+model: "dots-studio/dots-3-note-preview:free"
+max_tokens: 1500
+temperature: 0.7
 
-- [x] Технически работало, но русский с акцентом — модель англоцентрична
-- [x] Оставлено «на будущее» в бэкенде (`/tts` на порту 3000)
+**Таймауты:** index.js — 90s, ai_service.dart — 90s.
 
-**Известные проблемы:**
-| Проблема | Причина | Решение |
-|---|---|---|
-| `No module named 'flask'` | Homebrew Python (PEP 668) | venv в `sofi-server/venv/` |
-| CORS preflight без POST | не хватало `Access-Control-Allow-Methods` | явный CORS + `after_request` |
-
-### 🗓️ День 4 — 2026-10-29 (вечер)
-
-**Память (этап 2) — ГОТОВО:**
-
-- [x] `memory/profileManager.js` — CRUD профиля
-- [x] `memory/extractor.js` — извлечение фактов (regex + LLM)
-- [x] `memory/profile.json` — хранилище
-- [x] Regex для имени: `extractNameByRegex` (100% надёжно)
-- [x] Фильтр мусора `isJunk` (не сохраняет «нет данных»)
-- [x] `promptRouter.js` — `formatProfileForPrompt` в промпт
-- [x] Модель: `qwen2.5:3b` (лучше следует инструкциям)
-- [x] Жёсткий `LANGUAGE_LOCK` с примерами (различает меня/тебя)
-
-**Проверено:**
-
-- Sofi помнит имя: «Тебя зовут Адам» ✅
-- Sofi помнит факты: «Ты работаешь программистом» ✅
-- Различает «меня/тебя» ✅
-
-**Следующий этап:** интернет (tool calling + web search).
-
-**Как запустить Flask (новый терминал):**
-
-````bash
-cd ~/Desktop/sofi/sofi-server
-source venv/bin/activate
-python tts_server.py
-# → 🔊 Edge TTS on http://localhost:5001
-
-## 🚀 Как запустить
-
-Нужны **три терминала** (Ollama может работать в фоне).
-
-### Терминал 1 — Ollama
-
-```bash
-ollama serve
-# (если уже работает в фоне — не нужно)
-
-Терминал 2 — бэкенд
-
-cd ~/Desktop/sofi/sofi-server
-node index.js
-
-Ожидаемый вывод:
-
-🧠 Sofi V8 running on http://localhost:3000
-🔥 Warming up model...
-✅ Model ready in 7.5s
-
-Терминал 3 — Flutter
-
-cd ~/Desktop/sofi
-flutter run -d chrome          # для web
-flutter run -d emulator-5554   # для Android-эмулятора
-flutter run -d <device-id>     # для физического телефона
-
-Firestore Rules (действующие)
+**Firestore Rules:**
 
 rules_version = '2';
 service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
+match /databases/{database}/documents {
+match /users/{userId}/{document=\*\*} {
+allow read, write: if request.auth != null && request.auth.uid == userId;
+}
+}
 }
 
+---
+
+## 🧪 Проверка
+
+````bash
+curl http://localhost:3000/health
+# {"ok":true,...}
+
+curl -X POST http://localhost:3000/chat -H "Content-Type: application/json" \
+  -d '{"message":"Привет","userId":"test"}'
+# {"reply":"Привет! Как ты сегодня?"} за 3-5 сек
+
+curl -X POST http://localhost:3000/chat -H "Content-Type: application/json" \
+  -d '{"message":"Погода в Минске?","userId":"test"}'
+# {"reply":"... +10°, 88% ..."}
+
+
+User asks if that's all - they only see the "Быстрый старт" block. The full text didn't come through. Need to give it in chunks.
+
+Let me break it into 3-4 parts so nothing gets lost.
+
+Нет, это только первая часть. Видимо, длинный текст обрезается. Даю по частям — скопируй и вставь по очереди.
+
+📄 Часть 1 из 4 — заголовок и быстрый старт
+markdown
+# 🐱 SOFI — Project State
+
+> AI-компаньон с характером: личностью, эмоциями, памятью и голосом.
+> Скинь этот файл AI-ассистенту — и он продолжит без лишних вопросов.
+
+**Обновлено:** 2026-10-30 (день 5 — OpenRouter + Dots3)
+
+---
+
+## ⚡ Быстрый старт
+
+1. Скинь этот файл AI-ассистенту.
+2. Скажи: «продолжаем Sofi, день 6 — [что делаем]».
+3. Запусти 3 терминала:
+Терминал 1 — Бэкенд:
+cd ~/Desktop/sofi/sofi-server && node index.js
+→ 🧠 Sofi V8 running + ✅ AI клиент настроен
+
+Терминал 2 — Edge TTS:
+cd ~/Desktop/sofi/sofi-server
+source ~/Desktop/sofi/.venv/bin/activate
+python tts_server.py
+→ 🔊 Edge TTS on http://localhost:5001
+
+Терминал 3 — Flutter:
+cd ~/Desktop/sofi && flutter run -d chrome
+
+text
+📄 Часть 2 из 4 — о проекте и архитектура
+markdown
+---
+
+## 🎯 О проекте
+
+**Sofi** — AI-компаньон с памятью, эмоциями, личностью и голосом. Учебный проект.
+
+| Способность | Что значит |
+|---|---|
+| 🧠 Память | Имя, факты, история (Firestore + profile.json) |
+| 💭 Эмоции | Реакция на тон (emotionEngine) |
+| 🎭 Личность | 25 модулей на бэкенде |
+| 🗣️ Голос | STT (микрофон) + TTS (Edge TTS) |
+| 🌐 Интернет | Web search (погода, новости) |
+
+---
+
+## 🏗️ Архитектура
+Flutter App (sofi/)
+├── Firebase Auth + Firestore (история)
+├── STT (speech_to_text)
+└── TTS (just_audio)
+│ HTTP
+▼
+Node.js Backend (sofi-server/)
+├── /chat (25 модулей личности)
+├── /tts (KittenML — отложено)
+├── /health
+└── tools/webSearch
+│
+┌────┴────┐
+▼ ▼
+OpenRouter Edge TTS (Flask, 5001)
+Dots3 280B ru-RU-Svetlana
+
+text
+
+**Ollama больше не используется** (8 ГБ RAM не тянет локальную LLM).
+📄 Часть 3 из 4 — технологии, что работает, проблемы
+markdown
+---
+
+## 🧰 Технологии
+
+**Flutter:** firebase (auth, firestore), http, google_fonts (Inter), flutter_animate, speech_to_text, just_audio.
+
+**Node.js:** Express, CORS, OpenRouter API, Edge TTS (Flask), @agent-sh/harness-websearch, 25 модулей личности.
+
+**LLM:** `dots-studio/dots-3-note-preview:free` (OpenRouter, 280B MoE, отличный русский). Лимит free: 50/день.
+
+---
+
+## ✅ Что работает
+
+| Фича | Статус |
+|---|---|
+| Авторизация email/password | ✅ |
+| Чат + история в Firestore | ✅ |
+| Память: имя, факты | ✅ «Тебя зовут Денис» |
+| Контекст (10 сообщений) | ✅ |
+| Web search | ✅ «+10°, 88%, 749 мм» |
+| STT (микрофон) | ✅ (проверен ранее) |
+| TTS (Edge TTS) | ⏳ не проверено после смены LLM |
+| Тёмная тема, анимации | ✅ |
+| Пост-фильтры ответа | ✅ |
+| Скорость | ✅ 3–5 сек |
+
+**5/5 тестов прошли:** привет / имя / спасибо / погода / контекст.
+
+---
+
+## 🟡 Проблемы
+
+| Проблема | Решение |
+|---|---|
+| Иногда «Я рядом.» (~10%) | Retry 2× включён; альтернатива — Cerebras |
+| Лимит 50/день OpenRouter | Хватит на демо; ждать сутки |
+| Dots3 рвёт кириллицу | Редко; пост-фильтры ловят |
+| Клонирование голоса с акцентом | Отложено (KittenML) |
+| Эмодзи на web | Убрали 👋 из приветствия |
+📄 Часть 4 из 4 — структура, настройки, roadmap
+markdown
+---
+
+## 📁 Структура
+sofi/
+├── lib/
+│ ├── main.dart
+│ ├── models/chat_message.dart
+│ ├── screens/{login,chat}_screen.dart
+│ ├── services/{ai_service,firestore_memory,voice_service,search_detector}.dart
+│ ├── theme/app_theme.dart
+│ └── widgets/{message_bubble,chat_input}.dart
+└── pubspec.yaml
+
+sofi-server/
+├── index.js # /chat, /tts, /health + пост-фильтры
+├── ai.js # OpenRouter + Dots3 + retry
+├── tts_server.py # Edge TTS (Flask, 5001)
+├── ai/ # 10 модулей личности
+├── memory/ # profileManager, extractor, profile.json
+├── tools/ # webSearch, shouldSearch
+├── prompt/promptRouter.js
+├── utils/finalConsistency.js
+├── .env # НЕ коммитить!
+└── package.json
+
+text
+
+---
+
+## 🔑 Ключевые настройки
+
+**`.env` в sofi-server/** (НЕ коммитить):
+OPENROUTER_API_KEY=sk-or-v1-...
+KITTENML_API_KEY=...
+
+text
+
+**ai.js:**
+model: "dots-studio/dots-3-note-preview:free"
+max_tokens: 1500
+temperature: 0.6
+
+text
+
+**Таймауты:** index.js — 90s, ai_service.dart — 90s.
+
+**Firestore Rules:**
+rules_version = '2';
+service cloud.firestore {
+match /databases/{database}/documents {
+match /users/{userId}/{document=**} {
+allow read, write: if request.auth != null && request.auth.uid == userId;
+}
+}
+}
+
+text
+
+---
+
+## 🧪 Проверка
+
+```bash
+curl http://localhost:3000/health
+# {"ok":true,...}
+
+curl -X POST http://localhost:3000/chat -H "Content-Type: application/json" \
+  -d '{"message":"Привет","userId":"test"}'
+# {"reply":"Привет! Как ты сегодня?"} за 3-5 сек
+
+curl -X POST http://localhost:3000/chat -H "Content-Type: application/json" \
+  -d '{"message":"Погода в Минске?","userId":"test"}'
+# {"reply":"... +10°, 88% ..."}
+🎯 Осталось
+День 6 (приоритет):
+
+□ Проверить TTS (Edge TTS на 5001 + 🔊 в Chrome)
+□ Проверить STT (микрофон)
+□ Проверить автоозвучку (🔊 в AppBar)
+К защите:
+
+□ README.md (финал)
+□ ARCHITECTURE.md (Mermaid + 25 модулей)
+□ Презентация 10–15 слайдов
+□ Ответ про этику клонирования голоса
+Опционально:
+
+□ Provider вместо setState
+□ Тест на Android
+□ Деплой (Railway)
+
+🗓️ История
+День	Главное
+1–2	Flutter UI + Firebase + Ollama (qwen2.5:3b)
+3	Edge TTS вместо KittenML, STT
+4	Память профиля, qwen2.5:3b
+5	OpenRouter + Dots3 — умно, 3–5 сек
+
+⚠️ Что НЕ трогать
+index.js — пост-фильтры (stripCapsPrefixes, fixMyNameAnswer, fixSpacing, fixTruncation)
+
+ai.js — модель dots-3-note-preview:free, max_tokens 1500, retry 2×
+
+ai_service.dart — utf8.decode(response.bodyBytes) (иначе русский ломается)
+
+promptRouter.js — formatHistory (последние 10 сообщений)
+
+memory/extractor.js — regex для имени + isJunk
+
+.env — НЕ коммитить
+
+💭 Для защиты (потолок)
+8 ГБ RAM → локальная LLM невозможна. OpenRouter free — компромисс: умно, но 50/день и ~10% «Я рядом.»
+
+Клонирование голоса — работает, но акцент. В продакшене → ElevenLabs.
+
+Продакшен → платный API (OpenAI/Groq) или GPU.
+
+
+## 📋 Как собрать файл
+
+1. Открой `sofi/PROJECT_STATE.md`.
+2. `Cmd+A` → `Backspace` (удалить старое).
+3. Вставь **Часть 1** → Enter → **Часть 2** → Enter → **Часть 3** → Enter → **Часть 4**.
+4. `Cmd+S` (сохранить).
+5. Проверь:
+   ```bash
+   cd ~/Desktop/sofi
+   wc -l PROJECT_STATE.md
 ````
