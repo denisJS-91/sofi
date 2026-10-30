@@ -1,6 +1,23 @@
 import { askAI } from "../ai.js";
 import { mergeFacts, setUserName } from "./profileManager.js";
 
+// 🎯 Маркеры, после которых имеет смысл извлекать факты
+const FACT_MARKERS = [
+  /я\s+(живу|проживаю)/i,
+  /меня\s+зовут/i,
+  /моё\s+имя/i,
+  /мое\s+имя/i,
+  /я\s+(работаю|учусь)/i,
+  /я\s+люблю/i,
+  /мне\s+\d+\s+лет/i,
+  /мо[йя]\s+(хобби|профессия|город|работа)/i,
+  /зови\s+меня/i,
+];
+
+function hasFactMarker(text) {
+  return FACT_MARKERS.some((re) => re.test(text));
+}
+
 // Мусорные значения — их не сохраняем
 const JUNK_VALUES = [
   "ничего конкретного",
@@ -35,6 +52,12 @@ function extractNameByRegex(text) {
 
 export async function extractFactsFromDialog(userId, userMessage, aiReply) {
   try {
+    // 🛡️ ГЛАВНЫЙ ФИЛЬТР: извлекаем факты только если есть маркер
+    if (!hasFactMarker(userMessage)) {
+      console.log("⏭️ Нет маркеров фактов — пропускаем извлечение");
+      return;
+    }
+
     // 🎯 1. Сначала regex — быстро и надёжно для имени
     const nameFromRegex = extractNameByRegex(userMessage);
     if (nameFromRegex) {
@@ -96,11 +119,14 @@ JSON:`;
         (f) => f.key && f.value && !isJunk(f.value),
       );
 
-      if (cleanFacts.length > 0) {
-        mergeFacts(userId, cleanFacts);
-        console.log(`🧠 Фактов (чистых): ${cleanFacts.length}`);
-      } else {
-        console.log("🧹 Все факты отфильтрованы как мусор");
+      // 🧹 Убираем «имя» из facts — оно уже в profile.name
+      const factsWithoutName = cleanFacts.filter(
+        (f) => !/^(имя|name)$/i.test(f.key),
+      );
+
+      if (factsWithoutName.length > 0) {
+        mergeFacts(userId, factsWithoutName);
+        console.log(`🧠 Фактов (чистых): ${factsWithoutName.length}`);
       }
     }
   } catch (e) {

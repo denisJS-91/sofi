@@ -96,12 +96,26 @@ export function setUserName(userId, name) {
 export function formatProfileForPrompt(userId) {
   const p = getProfile(userId);
   const lines = [];
-  if (p.name) lines.push(`- Имя: ${p.name}`);
+
+  // Имя — отдельно и явно
+  if (p.name) {
+    lines.push(`Имя пользователя: ${p.name}`);
+  }
+
+  // Факты — отдельным блоком с явным заголовком
   if (p.facts && p.facts.length > 0) {
+    lines.push("Известные факты о пользователе (это НЕ имя):");
     for (const f of p.facts) {
-      lines.push(`- ${f.key}: ${f.value}`);
+      lines.push(`  • ${f.key}: ${f.value}`);
     }
   }
+
   if (lines.length === 0) return "";
-  return `Что ты знаешь о пользователе:\n${lines.join("\n")}\n`;
+
+  return (
+    "Что ты знаешь о пользователе:\n" +
+    lines.join("\n") +
+    '\n\nВНИМАНИЕ: имя пользователя — только в строке "Имя пользователя:". ' +
+    'Если такой строки нет — ты не знаешь имени. Строка "живёт в: Москва" означает город, а НЕ имя.\n'
+  );
 }

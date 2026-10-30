@@ -11,8 +11,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@agent-sh/harness-websearch": "^0.9.1",
+    "@purili/web-search": "^0.1.0",
     "cors": "^2.8.6",
+    "ddg-lite": "^1.0.0",
     "dotenv": "^17.4.2",
+    "duck-duck-scrape": "^2.2.7",
     "express": "^5.2.1",
     "openai": "^6.38.0"
   }

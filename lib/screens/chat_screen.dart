@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/ai_service.dart';
 import '../services/firestore_memory.dart';
 import '../services/voice_service.dart';
+import '../services/search_detector.dart';
 import '../models/chat_message.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/chat_input.dart';
@@ -22,6 +23,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isHistoryLoading = true;
   bool _isListening = false;
   bool _autoSpeak = false;
+  String _statusText = "";
 
   @override
   void initState() {
@@ -105,17 +107,33 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() => _isListening = false);
     }
 
+    // 🔍 Определяем, будет ли поиск
+    final willSearch = SearchDetector.shouldSearch(text);
+
     setState(() {
       _messages
           .add(ChatMessage(text: text, isUser: true, time: DateTime.now()));
       _isLoading = true;
+      _statusText =
+          willSearch ? "🔍 Sofi ищет в интернете..." : "Sofi печатает...";
     });
     _controller.clear();
     _scrollToBottom();
 
+    // Если поиск — через 2 секунды меняем на «печатает...»
+    if (willSearch) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted && _isLoading) {
+          setState(() => _statusText = "Sofi печатает...");
+        }
+      });
+    }
+
     String reply;
     try {
-      reply = await AiService.sendMessage(text);
+      final historyForBackend =
+          _messages.map((m) => {"isUser": m.isUser, "text": m.text}).toList();
+      reply = await AiService.sendMessage(text, history: historyForBackend);
     } catch (_) {
       reply = "Ошибка подключения 😕";
     }
@@ -125,6 +143,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages
           .add(ChatMessage(text: reply, isUser: false, time: DateTime.now()));
       _isLoading = false;
+      _statusText = "";
     });
     _scrollToBottom();
 
@@ -221,12 +240,27 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                 ),
                 if (_isLoading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        if (_statusText.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            _statusText,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ChatInput(

@@ -12,14 +12,17 @@ class AiService {
     return "http://localhost:3000";
   }
 
-  static Future<String> sendMessage(String message) async {
+  static Future<String> sendMessage(
+    String message, {
+    List<Map<String, dynamic>> history = const [],
+  }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       debugPrint("🚫 user is null");
       return "Пользователь не авторизован";
     }
 
-    debugPrint("▶️ sendMessage: $message");
+    debugPrint("▶️ sendMessage: $message (history: ${history.length})");
 
     // 💾 Firestore save (не блокирует чат)
     try {
@@ -39,19 +42,26 @@ class AiService {
           .post(
             Uri.parse("$_baseUrl/chat"),
             headers: {"Content-Type": "application/json"},
-            body: jsonEncode({"message": message, "userId": user.uid}),
+            body: jsonEncode({
+              "message": message,
+              "userId": user.uid,
+              "history": history,
+            }),
           )
-          .timeout(const Duration(seconds: 40));
+          .timeout(const Duration(seconds: 90));
 
       debugPrint("📡 status: ${response.statusCode}");
-      debugPrint("📡 body: ${response.body}");
 
       if (response.statusCode != 200) {
         return "Ошибка сервера (${response.statusCode})";
       }
 
-      final data = jsonDecode(response.body);
+      // 🔑 ВАЖНО: utf8.decode — иначе русский на web сломается
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
       final reply = (data["reply"] as String?) ?? "Пустой ответ AI";
+
+      debugPrint(
+          "📡 reply (${reply.length} chars): ${reply.length > 60 ? '${reply.substring(0, 60)}...' : reply}");
 
       try {
         await FirestoreMemory.saveMessage(
