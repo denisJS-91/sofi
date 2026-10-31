@@ -280,6 +280,9 @@ markdown
 
 ---
 
+
+---
+
 ## 🟡 Проблемы
 
 | Проблема | Решение |
@@ -421,3 +424,23 @@ memory/extractor.js — regex для имени + isJunk
    cd ~/Desktop/sofi
    wc -l PROJECT_STATE.md
 ````
+
+## 📅 Обновление (TTS — финал)
+
+### ✅ TTS работает
+
+- **Модель:** `fish-audio/s2.1-pro-free:free` через OpenRouter
+- **Клонирование:** `input_references` с `my_voice.wav` (base64) + транскрипт
+- **Ударение:** `fix_stress()` заменяет «Софи» → «Софи́» (на «и»)
+- **Файлы:**
+  - `sofi-server/tts_server.py` — финальная версия (Flask + OpenRouter + клонирование)
+  - `sofi-server/my_voice.wav` — образец голоса (НЕ коммитить в git!)
+- **Ключ:** `OPENROUTER_API_KEY` в `.env`, `load_dotenv()` в `tts_server.py`
+- **Порт:** 5001, CORS настроен
+
+### 🎯 Что дальше
+
+- [ ] STT (микрофон) — проверить `speech_to_text`
+- [ ] Автоозвучка (🔊 в AppBar) — проверить переключатель
+- [ ] Документация (README, ARCHITECTURE)
+- [ ] `.gitignore` — добавить `my_voice.wav` и `.env` (если ещё нет)
