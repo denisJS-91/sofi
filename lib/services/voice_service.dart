@@ -115,7 +115,16 @@ class VoiceService {
         await _audioPlayer.setFilePath(file.path);
       }
 
-      await _audioPlayer.play();
+      // Запускаем воспроизведение
+      _audioPlayer.play();
+
+      // Ждём именно "completed", с таймаутом-страховкой 60 секунд
+      await _audioPlayer.processingStateStream
+          .firstWhere((state) => state == ProcessingState.completed)
+          .timeout(
+            const Duration(seconds: 60),
+            onTimeout: () => ProcessingState.completed,
+          );
     } catch (e) {
       debugPrint("TTS playback error: $e");
     }

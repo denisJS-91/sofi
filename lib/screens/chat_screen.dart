@@ -22,7 +22,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
   bool _isHistoryLoading = true;
   bool _isListening = false;
-  bool _autoSpeak = false;
+  bool _autoSpeak = true;
+  bool _isSpeaking = false;
   String _statusText = "";
 
   @override
@@ -93,7 +94,12 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() {});
       },
       onDone: () {
-        if (mounted) setState(() => _isListening = false);
+        if (!mounted) return;
+        setState(() => _isListening = false);
+        // 👈 автоматически отправляем, если есть текст
+        if (_controller.text.trim().isNotEmpty) {
+          sendMessage();
+        }
       },
     );
   }
@@ -148,7 +154,12 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
 
     if (_autoSpeak && !reply.contains("Ошибка")) {
-      VoiceService.speak(reply);
+      if (mounted) setState(() => _isSpeaking = true);
+      try {
+        await VoiceService.speak(reply);
+      } finally {
+        if (mounted) setState(() => _isSpeaking = false);
+      }
     }
   }
 
@@ -198,14 +209,6 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(
-              _autoSpeak ? Icons.volume_up : Icons.volume_off,
-              color: _autoSpeak ? AppColors.primary : AppColors.textSecondary,
-            ),
-            tooltip: _autoSpeak ? "Автоозвучка вкл" : "Автоозвучка выкл",
-            onPressed: () => setState(() => _autoSpeak = !_autoSpeak),
-          ),
-          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: "Выйти",
             onPressed: _logout,
@@ -239,6 +242,25 @@ class _ChatScreenState extends State<ChatScreen> {
                           },
                         ),
                 ),
+                if (_isSpeaking && !_isLoading)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.volume_up,
+                            size: 16, color: AppColors.primary),
+                        SizedBox(width: 8),
+                        Text(
+                          "Sofi говорит…",
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 if (_isLoading)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
