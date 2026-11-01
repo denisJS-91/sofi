@@ -1,102 +1,184 @@
-# sofi
+# 🐱 Sofi — AI Companion
 
-A new Flutter project.
+AI-компаньон с памятью, личностью и клонированным голосом. Flutter + Node.js + OpenRouter.
 
-## Getting Started
+## 🎯 Что это
 
-This project is a starting point for a Flutter application.
+Sofi — не просто чат-бот. У неё есть:
 
-A few resources to get you started if this is your first Flutter project:
+- 🧠 **Память** — помнит имя, факты, историю диалога (Firestore + `profile.json`)
+- 🎭 **Личность** — 25 модулей на бэкенде (эмоции, состояние, характер)
+- 🗣️ **Голос** — распознавание речи (STT) + озвучка **твоим клонированным голосом** (TTS)
+- 🌐 **Интернет** — поиск погоды и новостей через web search
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## 🏗️ Архитектура
+┌────────────────────┐
+│ Flutter App │
+│ • Auth │
+│ • Chat UI │
+│ • STT / TTS │
+│ • Firestore │
+└─────────┬──────────┘
+│ HTTP
+▼
+┌────────────────────┐ ┌──────────────────┐
+│ Node.js Backend │─────▶│ OpenRouter │
+│ • /chat │ │ • Dots3 (LLM) │
+│ • /tts │ │ • Fish Audio │
+│ • /health │ └──────────────────┘
+│ • 25 модулей │
+└─────────┬──────────┘
+│
+├──▶ Firestore (история, профиль)
+└──▶ Python TTS server (5001, Fish Audio + клонирование)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
 
-📅 История разработки
-🗓️ День 1 — 2026-10-26
-Инфраструктура:
+## 🧰 Технологии
 
-✅ Firebase Auth + Firestore + Rules
+**Flutter:** Firebase (Auth, Firestore), `http`, `speech_to_text`, `just_audio`, `provider`, `google_fonts`, `flutter_animate`.
 
-✅ Роутинг login ↔ chat
+**Backend (Node.js):** Express, OpenRouter API (Dots3), 25 модулей личности, web search.
 
-✅ Чат с бэкендом, история, автоскролл, logout, блокировка send
+**TTS (Python, Flask):** Fish Audio через OpenRouter, клонирование голоса по образцу.
 
-✅ Платформенный baseUrl, таймауты (Flutter 40s, backend 50s)
+**LLM:** `dots-studio/dots-3-note-preview:free` (OpenRouter, 280B MoE, хороший русский, free-тариф 50 запросов/день).
 
-✅ Переход с mistral:7b на llama3.2:3b + warmup
+## 🚀 Быстрый старт
 
-✅ languageLock — 7 правил (только русский, роль Sofi)
+### Требования
 
-✅ Убран мёртвый код после return в index.js
+- Flutter SDK 3.3+
+- Node.js 18+
+- Python 3.10+ (для TTS-сервера)
 
-🗓️ День 2 — 2026-10-27
-UI-полировка (этап C):
+### 1. Клонировать репозиторий
 
-✅ theme/app_theme.dart — тёмная тема + Inter
+```bash
+git clone <repo-url>
+cd sofi
 
-✅ widgets/message_bubble.dart — пузырь с анимацией (flutter_animate)
+2. Настроить ключи
 
-✅ widgets/chat_input.dart — поле ввода с микрофоном
+OPENROUTER_API_KEY=sk-or-v1-...
+Ключ взять на openrouter.ai/keys.
 
-✅ AppBar с аватаром «S» (градиент) и кнопкой автоозвучки
+3. Установить зависимости
 
-✅ Пузыри Telegram-style
+# Flutter
+flutter pub get
 
-✅ Убран 👋 из приветствия (эмодзи на web не работают)
+# Node.js
+cd sofi-server
+npm install
 
-Голос (этап B):
+# Python (TTS)
+python3 -m venv ~/Desktop/sofi/.venv
+source ~/Desktop/sofi/.venv/bin/activate
+pip install flask flask-cors requests python-dotenv
 
-✅ services/voice_service.dart — STT + TTS
+4. Запустить три терминала
 
-✅ STT (speech_to_text) — Chrome + Android
+Терминал 1 — бэкенд:
 
-✅ TTS через KittenML API (не flutter_tts)
+cd sofi-server
+node index.js
+# → 🧠 Sofi V8 running on http://localhost:3000
 
-✅ Воспроизведение через just_audio (StreamAudioSource для web)
+Терминал 2 — TTS:
 
-✅ 🎤 микрофон — говорит → текст в поле
+cd sofi-server
+source ~/Desktop/sofi/.venv/bin/activate
+python tts_server.py
+# → ✅ Образец голоса загружен: my_voice.wav
+# → 🔊 Fish Audio TTS on http://localhost:5001
 
-✅ 🔊 на пузыре Sofi — озвучка
+Терминал 3 — Flutter:
 
-✅ 🔊 в AppBar — автоозвучка ответов
+cd sofi
+flutter run -d chrome
 
-Клонирование голоса:
+🎤 Голосовое клонирование
 
-✅ Записан образец (my_voice.wav)
+Запиши образец голоса (10–20 сек чистой речи) → sofi-server/my_voice.wav.
 
-✅ Загружен на catbox.moe → прямая ссылка
+Обнови REFERENCE_TEXT в tts_server.py — это точный транскрипт того, что ты сказал в my_voice.wav.
 
-✅ KittenML принимает reference как URL
+Перезапусти tts_server.py. Образец загрузится автоматически.
 
-✅ Клонирование работает (качество русского ограничено)
+Важно: my_voice.wav не коммитится (в .gitignore) — это личные данные.
 
-Бэкенд:
+📁 Структура
 
-✅ /tts эндпоинт (KittenML API)
+sofi/
+├── lib/
+│   ├── main.dart                 # auth-роутинг
+│   ├── models/
+│   │   └── chat_message.dart
+│   ├── screens/
+│   │   ├── login_screen.dart
+│   │   └── chat_screen.dart
+│   ├── services/
+│   │   ├── ai_service.dart       # HTTP к бэкенду
+│   │   ├── firestore_memory.dart # история
+│   │   ├── voice_service.dart    # STT + TTS
+│   │   └── search_detector.dart
+│   ├── theme/
+│   │   └── app_theme.dart
+│   └── widgets/
+│       ├── message_bubble.dart
+│       └── chat_input.dart
+└── pubspec.yaml
 
-✅ .env: KITTENML_API_KEY
+sofi-server/
+├── index.js                      # /chat, /tts, /health
+├── ai.js                         # OpenRouter + Dots3
+├── tts_server.py                 # Fish Audio + клонирование
+├── ai/                           # модули личности
+├── memory/                       # profile.json
+├── tools/                        # web search
+├── prompt/
+├── utils/
+├── .env                          # НЕ коммитить
+└── package.json
 
-🎯 Что осталось (roadmap)
-Вариант A — Улучшить клонирование (15–30 мин) 🟡
-□ Перезаписать образец: 15–25 сек, чистая речь, простой текст
-□ Проверить через curl — стало ли лучше
-□ Если плохо — перейти на Fish Audio (бесплатный тариф, хороший русский)
-Вариант B — Документация к защите (1–2 часа) 🔥 ОБЯЗАТЕЛЬНО
-□ README.md — финальная версия со скриншотами
-□ Диаграмма архитектуры (draw.io / Mermaid)
-□ Презентация 10–15 слайдов
-□ Описание 25 модулей личности бэкенда
-□ Ответ про этику клонирования голоса
-□ Список литературы / источников
-Вариант C — Финальная полировка (1–2 часа) 🟢
-□ ChatProvider — вынести состояние из setState
-□ Тест на Android-эмуляторе
-□ Финальная сборка
-Вариант D — Provider (опционально)
-□ List<ChatMessage> + isLoading → ChatProvider
-□ Заменить setState на notifyListeners()
+🔧 Проверка
+
+# Healthcheck
+curl http://localhost:3000/health
+# {"ok":true,"name":"sofi","v":8}
+
+# Чат
+curl -X POST http://localhost:3000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Привет","userId":"test"}'
+# {"reply":"Привет! Как ты сегодня?"} за 3–5 сек
+
+# TTS
+curl -X POST http://localhost:5001/tts \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Привет! Я Софи."}' \
+  --output test.mp3
+
+📝 Что не трогать
+
+index.js — пост-фильтры (stripCapsPrefixes, fixMyNameAnswer, fixSpacing, fixTruncation).
+
+ai.js — модель dots-3-note-preview:free, max_tokens: 1500, retry 2×.
+
+ai_service.dart — utf8.decode(response.bodyBytes) (иначе русский ломается).
+
+promptRouter.js — formatHistory (последние 10 сообщений).
+
+memory/extractor.js — regex для имени + isJunk.
+
+.env, my_voice.wav — не коммитить.
+
+
+## 🎯 Что дальше
+
+1. **Замени `README.md`** на этот текст.
+2. **Проверь**, что markdown рендерится нормально (в VS Code: `Cmd+Shift+V`).
+3. **Коммит:**
+   ```bash
+   git add README.md
+   git commit -m "docs: proper README with architecture, quickstart, TTS setup"
