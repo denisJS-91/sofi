@@ -35,3 +35,7 @@ build_log.txt
 *.swp
 sofi-server/my_voice.wav
 sofi-server/.env
+sofi-server/.venv/
+*.mp3
+sofi-server/test_clone.py
+sofi-server/test_stress.py
