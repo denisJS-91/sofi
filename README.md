@@ -174,11 +174,3 @@ memory/extractor.js — regex для имени + isJunk.
 .env, my_voice.wav — не коммитить.
 
 
-## 🎯 Что дальше
-
-1. **Замени `README.md`** на этот текст.
-2. **Проверь**, что markdown рендерится нормально (в VS Code: `Cmd+Shift+V`).
-3. **Коммит:**
-   ```bash
-   git add README.md
-   git commit -m "docs: proper README with architecture, quickstart, TTS setup"
