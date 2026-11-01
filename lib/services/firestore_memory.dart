@@ -12,7 +12,7 @@ class FirestoreMemory {
     await _db.collection("users").doc(userId).collection("messages").add({
       "text": text,
       "isUser": isUser,
-      "timestamp": FieldValue.serverTimestamp(),
+      "timestamp": Timestamp.now(),
     });
   }
 
@@ -21,13 +21,15 @@ class FirestoreMemory {
         .collection("users")
         .doc(userId)
         .collection("messages")
-        .orderBy("timestamp")
         .limit(100)
         .get();
 
-    return snapshot.docs
+    final messages = snapshot.docs
         .map((doc) => ChatMessage.fromFirestore(doc.data()))
         .toList();
+
+    messages.sort((a, b) => a.time.compareTo(b.time));
+    return messages;
   }
 
   static Future<void> clearMemory(String userId) async {
