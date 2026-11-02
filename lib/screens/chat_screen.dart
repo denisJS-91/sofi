@@ -55,6 +55,16 @@ class _ChatScreenState extends State<ChatScreen> {
         _isHistoryLoading = false;
       });
       _scrollToBottom();
+      if (history.isEmpty && _autoSpeak) {
+        if (mounted) setState(() => _isSpeaking = true);
+        try {
+          await VoiceService.speak(
+            "Привет! Я Sofi. Я рядом, если тебе нужна помощь.",
+          );
+        } finally {
+          if (mounted) setState(() => _isSpeaking = false);
+        }
+      }
     } catch (e) {
       debugPrint("loadHistory error: $e");
       if (!mounted) return;
@@ -163,6 +173,71 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _newChat() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text(
+          "Новый чат?",
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: const Text(
+          "История текущего диалога будет удалена.",
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Отмена"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Очистить",
+              style: TextStyle(color: AppColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await VoiceService.stopSpeaking();
+      await FirestoreMemory.clearMemory(user.uid);
+      if (!mounted) return;
+      const greeting = "Привет! Я Sofi. Я рядом, если тебе нужна помощь.";
+      setState(() {
+        _messages.clear();
+        _messages.add(ChatMessage(
+          text: greeting,
+          isUser: false,
+          time: DateTime.now(),
+        ));
+      });
+
+      if (_autoSpeak) {
+        if (mounted) setState(() => _isSpeaking = true);
+        try {
+          await VoiceService.speak(greeting);
+        } finally {
+          if (mounted) setState(() => _isSpeaking = false);
+        }
+      }
+    } catch (e) {
+      debugPrint("newChat error: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Не удалось очистить историю")),
+      );
+    }
+  }
+
   Future<void> _logout() async {
     await VoiceService.stopSpeaking();
     await VoiceService.stopListening();
@@ -208,6 +283,11 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add_comment_outlined),
+            tooltip: "Новый чат",
+            onPressed: _newChat,
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: "Выйти",
