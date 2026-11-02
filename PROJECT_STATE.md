@@ -519,9 +519,19 @@ memory/extractor.js — regex для имени + isJunk
 
 **Озвучка длинных ответов:** 750 символов — **озвучивается полностью** (Fish Audio справляется).
 
+### ✅ UI-полировка (E)
+
+- **Тема:** светло-золотистая (`#F7F0E1` фон, `#D4A017` акцент)
+- **Логотипы:**
+  - `assets/images/logo.png` — LoginScreen
+  - `assets/images/logo_chat.png` — ChatScreen AppBar
+- **LoginScreen:** редизайн (логотип, градиент, иконки, валидация, понятные ошибки Firebase)
+- **ChatInput:** убрана чёрная полоса (Border `#1E293B` → `AppColors.surfaceElevated`)
+- **Шрифт:** Inter (через `google_fonts`)
+- **Анимации:** появление логотипа, заголовка, полей (`flutter_animate`)
+
 ### 🎯 Что дальше
 
 - [ ] **C** — Тест на Android (30–60 мин)
 - [ ] **D** — Настройки (голос, тема) (1 час)
-- [ ] **E** — UI-полировка (1–2 часа)
 - [ ] **F** — Деплой (Railway/Render) (1–2 часа)
