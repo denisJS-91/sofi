@@ -2,35 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const bg = Color(0xFF0F172A); // тёмный фон
-  static const surface = Color(0xFF1E293B); // пузырь Sofi / поле ввода
-  static const surfaceElevated = Color(0xFF334155);
-  static const primary = Color(0xFF3B82F6); // синий акцент
-  static const primaryBright = Colors.blueAccent;
-  static const textPrimary = Colors.white;
-  static const textSecondary = Color(0xFF94A3B8);
-  static const danger = Color(0xFFEF4444);
+  static const bg = Color(0xFFF7F0E1); // тёплый крем (фон)
+  static const surface = Color(0xFFFDF8EE); // светлый крем (карточки, пузыри)
+  static const surfaceElevated = Color(0xFFF5EDDB); // чуть темнее (SnackBar)
+  static const primary = Color(0xFFD4A017); // золото (акцент)
+  static const primaryBright = Color(0xFFF0C24E); // светлое золото
+  static const primaryDeep = Color(0xFFA67C0A); // тёмное золото (обводки)
+  static const textPrimary = Color(0xFF2C2417); // тёмно-коричневый
+  static const textSecondary = Color(0xFF7A6B4D); // приглушённый коричневый
+  static const danger = Color(0xFFD9534F);
 }
 
 class AppTheme {
-  static ThemeData get dark {
-    final base = ThemeData.dark(useMaterial3: true);
+  static ThemeData get light {
+    final base = ThemeData.light(useMaterial3: true);
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.bg,
       colorScheme: base.colorScheme.copyWith(
         primary: AppColors.primary,
         surface: AppColors.surface,
+        onSurface: AppColors.textPrimary,
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.bg,
         elevation: 0,
         centerTitle: false,
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         titleTextStyle: GoogleFonts.inter(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       textTheme: GoogleFonts.interTextTheme(base.textTheme).apply(
         bodyColor: AppColors.textPrimary,

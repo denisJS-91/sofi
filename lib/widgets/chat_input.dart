@@ -24,7 +24,7 @@ class ChatInput extends StatelessWidget {
       decoration: const BoxDecoration(
         color: AppColors.bg,
         border: Border(
-          top: BorderSide(color: Color(0xFF1E293B), width: 1),
+          top: BorderSide(color: AppColors.surfaceElevated, width: 1),
         ),
       ),
       child: SafeArea(
