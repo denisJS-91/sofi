@@ -1,5 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, SocketException;
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -19,12 +20,11 @@ class AiService {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       debugPrint("🚫 user is null");
-      return "Пользователь не авторизован";
+      return "Сессия истекла. Войди заново.";
     }
 
     debugPrint("▶️ sendMessage: $message (history: ${history.length})");
 
-    // 💾 Firestore save (не блокирует чат)
     try {
       await FirestoreMemory.saveMessage(
         userId: user.uid,
@@ -52,11 +52,19 @@ class AiService {
 
       debugPrint("📡 status: ${response.statusCode}");
 
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return "Сессия истекла. Войди заново.";
+      }
+      if (response.statusCode == 429) {
+        return "Лимит запросов исчерпан. Попробуй позже.";
+      }
+      if (response.statusCode >= 500) {
+        return "Ошибка на сервере. Проверь, что бэкенд запущен.";
+      }
       if (response.statusCode != 200) {
         return "Ошибка сервера (${response.statusCode})";
       }
 
-      // 🔑 ВАЖНО: utf8.decode — иначе русский на web сломается
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       final reply = (data["reply"] as String?) ?? "Пустой ответ AI";
 
@@ -75,8 +83,27 @@ class AiService {
       }
 
       return reply;
+    } on TimeoutException {
+      debugPrint("❌ TimeoutException");
+      return "Сервер не отвечает. Попробуй ещё раз.";
+    } on SocketException catch (e) {
+      debugPrint("❌ SocketException: $e");
+      return "Бэкенд недоступен. Запусти node index.js.";
+    } on FormatException catch (e) {
+      debugPrint("❌ FormatException: $e");
+      return "Некорректный ответ сервера.";
     } catch (e) {
       debugPrint("❌ HTTP error: $e");
+      final err = e.toString().toLowerCase();
+      if (err.contains("failed to fetch") ||
+          err.contains("clientexception") ||
+          err.contains("connection refused") ||
+          err.contains("socketexception")) {
+        return "Бэкенд недоступен. Запусти node index.js.";
+      }
+      if (err.contains("timeout")) {
+        return "Сервер не отвечает. Попробуй ещё раз.";
+      }
       return "Ошибка подключения 😕";
     }
   }
