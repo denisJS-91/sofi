@@ -8,6 +8,9 @@ import '../models/chat_message.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/chat_input.dart';
 import '../theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import '../services/settings_service.dart';
+import 'settings_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -22,7 +25,6 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
   bool _isHistoryLoading = true;
   bool _isListening = false;
-  bool _autoSpeak = true;
   bool _isSpeaking = false;
   String _statusText = "";
 
@@ -55,7 +57,8 @@ class _ChatScreenState extends State<ChatScreen> {
         _isHistoryLoading = false;
       });
       _scrollToBottom();
-      if (history.isEmpty && _autoSpeak) {
+      if (history.isEmpty &&
+          context.read<SettingsService>().settings.autoSpeak) {
         if (mounted) setState(() => _isSpeaking = true);
         try {
           await VoiceService.speak(
@@ -163,7 +166,8 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
 
-    if (_autoSpeak && !reply.contains("Ошибка")) {
+    if (context.read<SettingsService>().settings.autoSpeak &&
+        !reply.contains("Ошибка")) {
       if (mounted) setState(() => _isSpeaking = true);
       try {
         await VoiceService.speak(reply);
@@ -221,7 +225,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ));
       });
 
-      if (_autoSpeak) {
+      if (context.read<SettingsService>().settings.autoSpeak) {
         if (mounted) setState(() => _isSpeaking = true);
         try {
           await VoiceService.speak(greeting);
@@ -299,6 +303,13 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: const Icon(Icons.add_comment_outlined),
             tooltip: "Новый чат",
             onPressed: _newChat,
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: "Настройки",
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
