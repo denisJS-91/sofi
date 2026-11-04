@@ -14,7 +14,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # UI
-  google_fonts: ^6.2.1
+  google_fonts: ^8.2.1
   flutter_animate: ^4.5.0
 
   # State
@@ -24,24 +24,24 @@ dependencies:
   http: ^1.2.1
 
   # Firebase 🔥
-  firebase_core: ^3.0.0
-  firebase_auth: ^5.0.0
-  cloud_firestore: ^5.0.0
+  firebase_core: ^5.1.0
+  firebase_auth: ^7.0.1
+  cloud_firestore: ^7.1.0
 
   # Voice
   speech_to_text: ^7.0.0
   flutter_tts: ^4.0.2
 
   # Audio
-  record: ^5.1.2
-  just_audio: ^0.9.38
+  record: ^6.2.1
+  just_audio: ^0.10.6
 
   # Storage
   shared_preferences: ^2.2.3
 
   # Utils
   uuid: ^4.4.0
-  intl: ^0.19.0
+  intl: ^0.20.3
 
   # Icons
   flutter_svg: ^2.0.10+1
@@ -50,7 +50,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^4.0.0
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -58,3 +59,14 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+
+flutter_launcher_icons:
+  android: true
+  ios: false # iOS пока не нужен
+  web:
+    generate: true
+    image_path: "assets/images/logo.png"
+    background_color: "#0F172A"
+    theme_color: "#3B82F6"
+  image_path: "assets/images/logo.png"
+  min_sdk_android: 21

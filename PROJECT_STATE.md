@@ -223,7 +223,6 @@ curl -X POST http://localhost:5001/tts -H "Content-Type: application/json" \
 
 🎯 Осталось
 
-□ Тест на Android (STT/TTS на реальном устройстве)
 □ Обновить PROJECT_STATE.md → готово (2026-11-03)
 □ Настройки (голос, тема, профиль)
 □ Деплой (Railway для бэкенда, Firebase Hosting для фронта)
@@ -253,6 +252,7 @@ curl -X POST http://localhost:5001/tts -H "Content-Type: application/json" \
 6                                 TTS клонирование (Fish Audio), STT, автоозвучка
 7                                 Длинные ответы, эмоции, рефлексия, UI-редизайн
 8                                 README + ARCHITECTURE, repositioning как AI-компаньон
+9                                 🎨 Брендинг - [x] Своя иконка через `flutter_launcher_icons`
 ```
 
 ⚠️ Что НЕ трогать
@@ -295,3 +295,4 @@ Sofi — не «учебный проект». Это этичный AI-комп
 □ Голос озвучивает ответ?
 
 Если что-то не работает — см. ARCHITECTURE.md (диагностика) или спроси AI-ассистента.
+

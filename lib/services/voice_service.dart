@@ -31,6 +31,16 @@ class VoiceService {
   static final AudioPlayer _audioPlayer = AudioPlayer();
   static bool _sttAvailable = false;
 
+  // 🎯 TTS-сервер (Flask на 5001)
+  // Web: localhost:5001
+  // Android-эмулятор: 10.0.2.2:5001
+  // Физический Android: замени 10.0.2.2 на IP Mac (например 192.168.1.42)
+  static String get _ttsUrl {
+    if (kIsWeb) return "http://localhost:5001/tts";
+    if (Platform.isAndroid) return "http://172.20.10.5:5001/tts"; // эмулятор
+    return "http://localhost:5001/tts"; // iOS sim / desktop
+  }
+
   // ─────────── STT (распознавание речи) ───────────
 
   static Future<bool> initSTT() async {
@@ -89,8 +99,10 @@ class VoiceService {
     try {
       await _audioPlayer.stop();
 
+      debugPrint('🌐 TTS POST → $_ttsUrl');
+
       final response = await http.post(
-        Uri.parse("http://localhost:5001/tts"),
+        Uri.parse(_ttsUrl),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "text": text,
