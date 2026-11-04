@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Устанавливаем зависимости
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем код и образец голоса
+COPY tts_server.py .
+COPY my_voice.wav .
+
+EXPOSE 5001
+
+# Запускаем Flask
+CMD ["python3", "tts_server.py"]
