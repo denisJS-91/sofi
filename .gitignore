@@ -33,9 +33,10 @@ sofi-server/memory.json
 build_log.txt
 .DS_Store
 *.swp
-sofi-server/my_voice.wav
 sofi-server/.env
 sofi-server/.venv/
 *.mp3
 sofi-server/test_clone.py
 sofi-server/test_stress.py
+sofi-server/.env.save
+sofi-server/.env.*

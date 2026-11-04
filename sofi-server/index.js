@@ -145,38 +145,23 @@ app.get("/health", (_, res) => res.json({ ok: true, name: "sofi", v: 8 }));
 /* ─────────────────────────────
    TTS (KittenML — задел на клонирование)
 ───────────────────────────── */
+// 🎯 TTS прокси → Python (локально 127.0.0.1:5001, на Railway — внутренний URL)
+const TTS_URL = process.env.TTS_URL || "http://127.0.0.1:5001";
+
 app.post("/tts", async (req, res) => {
   const { text, reference } = req.body || {};
-
-  if (!text) {
-    return res.status(400).json({ error: "text is required" });
-  }
+  if (!text) return res.status(400).json({ error: "text required" });
 
   try {
-    const body = {
-      model: "kitten-tts-2-latest",
-      input: text,
-      response_format: "mp3",
-    };
-
-    if (reference) {
-      body.reference = reference;
-    } else {
-      body.voice = "martha_weathered_female_35";
-    }
-
-    const response = await fetch("https://api.kittenml.com/v1/audio/speech", {
+    const response = await fetch(`${TTS_URL}/tts`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.KITTENML_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, reference }),
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      console.error("KittenML error:", response.status, errText);
+      const err = await response.text();
+      console.error("TTS proxy error:", response.status, err);
       return res.status(response.status).json({ error: "TTS failed" });
     }
 
@@ -184,7 +169,7 @@ app.post("/tts", async (req, res) => {
     res.set("Content-Type", "audio/mpeg");
     res.send(Buffer.from(audioBuffer));
   } catch (e) {
-    console.error("TTS error:", e);
+    console.error("TTS proxy error:", e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -333,7 +318,8 @@ app.post("/chat", async (req, res) => {
 /* ─────────────────────────────
    START
 ───────────────────────────── */
-app.listen(3000, () => {
-  console.log("🧠 Sofi V8 running on http://localhost:3000");
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🧠 Sofi V8 running on http://0.0.0.0:${PORT}`);
   warmupAI();
 });

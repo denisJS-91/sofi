@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'firestore_memory.dart';
 
 class AiService {
-  static String get _baseUrl {
+  static String get baseUrl {
     if (kIsWeb) return "http://localhost:3000";
     if (Platform.isAndroid) return "http://172.20.10.5:3000";
     return "http://localhost:3000";
@@ -37,10 +37,10 @@ class AiService {
     }
 
     try {
-      debugPrint("🌐 POST $_baseUrl/chat ...");
+      debugPrint("🌐 POST $baseUrl/chat ...");
       final response = await http
           .post(
-            Uri.parse("$_baseUrl/chat"),
+            Uri.parse("$baseUrl/chat"),
             headers: {"Content-Type": "application/json"},
             body: jsonEncode({
               "message": message,

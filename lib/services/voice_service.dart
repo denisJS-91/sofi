@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, debugPrint, VoidCallback;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:just_audio/just_audio.dart';
 import 'package:http/http.dart' as http;
+import 'ai_service.dart';
 
 // Класс для потоковой передачи байтов в плеер (работает на всех платформах, включая Web)
 class MyAudioSource extends StreamAudioSource {
@@ -35,11 +36,7 @@ class VoiceService {
   // Web: localhost:5001
   // Android-эмулятор: 10.0.2.2:5001
   // Физический Android: замени 10.0.2.2 на IP Mac (например 192.168.1.42)
-  static String get _ttsUrl {
-    if (kIsWeb) return "http://localhost:5001/tts";
-    if (Platform.isAndroid) return "http://172.20.10.5:5001/tts"; // эмулятор
-    return "http://localhost:5001/tts"; // iOS sim / desktop
-  }
+  static String get _ttsUrl => "${AiService.baseUrl}/tts";
 
   // ─────────── STT (распознавание речи) ───────────
 

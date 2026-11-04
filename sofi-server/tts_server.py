@@ -111,5 +111,6 @@ def tts():
 if __name__ == "__main__":
     if not OPENROUTER_API_KEY:
         print("⚠️  OPENROUTER_API_KEY не задан")
-    print(f"🔊 Fish Audio TTS on http://localhost:5001 (model: {MODEL})")
-    app.run(host="0.0.0.0", port=5001)
+    port = int(os.environ.get("TTS_PORT", 5001))
+    print(f"🔊 Fish Audio TTS on http://0.0.0.0:{port} (model: {MODEL})")
+    app.run(host="0.0.0.0", port=port)
